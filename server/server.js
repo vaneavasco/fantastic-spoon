@@ -21,6 +21,14 @@ app.post('/todos', (req, res) => {
 
 });
 
+app.get('/todos', (req, res) => {
+    Todo.find().then((todos) => {
+        res.send({todos});
+    }, (err) => {
+        res.status(400).send(err);
+    });
+});
+
 let port = 3000;
 app.listen(port, () => {
     console.log('started on port ', port)
@@ -49,3 +57,5 @@ app.listen(port, () => {
 // }, (error) => {
 //     console.log('Unable to save user', error);
 // });
+
+module.exports = {app};
