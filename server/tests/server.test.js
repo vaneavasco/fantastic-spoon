@@ -3,13 +3,16 @@ const expect = require('expect');
 
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
+const {ObjectId} = require('mongodb');
 
 
 const todosSeed = [
     {
+        _id: new ObjectId(),
         text: 'First test todo'
     },
     {
+        _id: new ObjectId(),
         text: 'Second test todo'
     }
 ];
@@ -73,6 +76,34 @@ describe('GET /todos', () => {
             .expect((res) => {
                 expect(res.body.todos.length).toBe(todosSeed.length);
             })
+            .end(done);
+    });
+});
+
+describe('GET /todos:id', () => {
+    it('should get a valid todo', (done) => {
+        request(app)
+            .get('/todos/' + todosSeed[0]._id)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.todo._id).toEqual(todosSeed[0]._id);
+                expect(res.body.todo.text).toEqual(todosSeed[0].text);
+            })
+            .end(done);
+    });
+
+    it('should return not found', (done) => {
+        request(app)
+            .get('/todos/' + new ObjectId())
+            .expect(404)
+            .end(done);
+
+    });
+
+    it('should return 400 for invalid ids', (done) =>{
+        request(app)
+            .get('/todos/' + new ObjectId()  + 'xa')
+            .expect(400)
             .end(done);
     });
 });
