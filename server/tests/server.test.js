@@ -3,28 +3,12 @@ const expect = require('expect');
 
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
+const {User} = require('./../models/user');
 const {ObjectId} = require('mongodb');
+const seed = require('./seed/seed');
 
-
-const todosSeed = [
-    {
-        _id: new ObjectId(),
-        text: 'First test todo'
-    },
-    {
-        _id: new ObjectId(),
-        text: 'Second test todo'
-    }
-];
-
-beforeEach((done) => {
-    Todo.remove({}).then(() => {
-        Todo.insertMany(todosSeed).then((response) => {
-            done()
-        });
-
-    });
-});
+beforeEach(seed.populateUsers);
+beforeEach(seed.populateTodos);
 
 describe('POST /todos', () => {
     it('should create a new todo', (done) => {
@@ -61,7 +45,7 @@ describe('POST /todos', () => {
                 }
 
                 Todo.find().then((todos) => {
-                    expect(todos.length).toBe(todosSeed.length);
+                    expect(todos.length).toBe(seed.todosSeed.length);
                     done();
                 }).catch((e) => done(e));
             });
@@ -74,7 +58,7 @@ describe('GET /todos', () => {
             .get('/todos')
             .expect(200)
             .expect((res) => {
-                expect(res.body.todos.length).toBe(todosSeed.length);
+                expect(res.body.todos.length).toBe(seed.todosSeed.length);
             })
             .end(done);
     });
@@ -83,11 +67,11 @@ describe('GET /todos', () => {
 describe('GET /todos:id', () => {
     it('should get a valid todo', (done) => {
         request(app)
-            .get('/todos/' + todosSeed[0]._id)
+            .get('/todos/' + seed.todosSeed[0]._id)
             .expect(200)
             .expect((res) => {
-                expect(res.body.todo._id).toEqual(todosSeed[0]._id);
-                expect(res.body.todo.text).toEqual(todosSeed[0].text);
+                expect(res.body.todo._id).toEqual(seed.todosSeed[0]._id);
+                expect(res.body.todo.text).toEqual(seed.todosSeed[0].text);
             })
             .end(done);
     });
@@ -110,13 +94,13 @@ describe('GET /todos:id', () => {
 
 describe('DELETE /todos/:id', () => {
     it('should delete a valid todo', (done) => {
-        let toHexString = todosSeed[0]._id.toHexString();
+        let toHexString = seed.todosSeed[0]._id.toHexString();
         request(app)
             .delete(`/todos/${toHexString}`)
             .expect(200)
             .expect((res) => {
                 expect(res.body.todo._id).toBe(toHexString);
-                expect(res.body.todo.text).toBe(todosSeed[0].text);
+                expect(res.body.todo.text).toBe(seed.todosSeed[0].text);
             })
             .end((err, res) => {
                 if (err) {
@@ -148,6 +132,74 @@ describe('DELETE /todos/:id', () => {
             .expect(404)
             .end(done);
     });
+});
 
 
+describe('GET users/me', () => {
+    it('should return user when authenticated', (done) => {
+        request(app)
+            .get('/users/me')
+            .set('x-auth', seed.usersSeed[0].tokens[0].token)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body._id).toBe(seed.usersSeed[0]._id.toHexString());
+                expect(res.body.email).toBe(seed.usersSeed[0].email);
+            })
+            .end(done);
+    });
+
+    it('should return 401 when not authenticated', (done) => {
+        request(app)
+            .get('/users/me')
+            .expect(401)
+            .expect((res) => {
+                expect(res.body).toEqual({});
+            })
+            .end(done);
+    });
+});
+
+
+describe('POST /users', () => {
+    it('should create a user', (done) => {
+        let email = 'example@example.com';
+        let password = 'password123';
+
+        request(app)
+            .post('/users')
+            .send({email, password})
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.email).toBe(email);
+                expect(res.headers['x-auth']).toExist();
+                expect(res.body._id).toExist();
+            })
+            .end((err) => {
+                if (err) {
+                    return done();
+                }
+
+                User.findOne({email}).then((user) => {
+                    expect(user).toExist();
+                    expect(user.password).toNotBe(password);
+                    done();
+                });
+            });
+    });
+
+    it('it should return validation errors', (done) => {
+        request(app)
+            .post('/users')
+            .send({email: 'wer', password: '12'})
+            .expect(400)
+            .end(done);
+    });
+
+    it('it should not create duplicate users (email in use)', (done) => {
+        request(app)
+            .post('/users')
+            .send({email: seed.usersSeed[0].email, password: seed.usersSeed[0].password})
+            .expect(400)
+            .end(done);
+    });
 });
