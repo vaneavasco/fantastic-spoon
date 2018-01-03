@@ -203,3 +203,91 @@ describe('POST /users', () => {
             .end(done);
     });
 });
+
+describe('POST /users/login', () => {
+    it('my should login a user with valid credentials', (done) => {
+        request(app)
+            .post('/users/login')
+            .send({email: seed.usersSeed[0].email, password: seed.usersSeed[0].password})
+            .expect(200)
+            .expect((res) => {
+                expect(res.body._id).toExist();
+                expect(res.headers['x-auth']).toExist();
+                expect(res.body.email).toBe(seed.usersSeed[0].email);
+
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done();
+                }
+
+                User.findById({_id: seed.usersSeed[0]._id}).then((user) => {
+                    expect(user.tokens[1]).toInclude({
+                        access: 'auth',
+                        token: res.headers['x-auth']
+                    });
+
+                    done();
+                }).catch((e) => done(e));
+            });
+    });
+
+    it('should not login a user with invalid credentials', (done) => {
+        request(app)
+            .post('/users/login')
+            .send({
+                email: seed.usersSeed[1].email,
+                password: seed.usersSeed[1].password + '1'
+            })
+            .expect(400)
+            .expect((res) => {
+                expect(res.headers['x-auth']).toNotExist();
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+
+                User.findById(seed.usersSeed[1]._id).then((user) => {
+                    expect(user.tokens.length).toBe(0);
+                    done();
+                }).catch((e) => done(e));
+            });
+    });
+});
+
+describe('DELETE /users/me/token', () => {
+    it('should delete a valid token', (done) => {
+        request(app)
+            .delete('/users/me/token')
+            .set('x-auth', seed.usersSeed[0].tokens[0].token)
+            .expect(200)
+            .end((err, res) => {
+                if (err) {
+                    return done();
+                }
+
+                User.findById(seed.usersSeed[0]._id).then((user) => {
+                    expect(user.tokens.length).toBe(0);
+                    done();
+                }).catch(e => done())
+            });
+    });
+
+    it('should respond with 400 to an invalid token', (done) => {
+        request(app)
+            .delete('/users/me/token')
+            .set('x-auth', seed.usersSeed[0].tokens[0].token + 'bla')
+            .expect(400)
+            .end((err, res) => {
+                if (err) {
+                    return done();
+                }
+
+                User.findById(seed.usersSeed[0]._id).then((user) => {
+                    expect(user.tokens.length).toBe(1);
+                    done();
+                }).catch(e => done())
+            });
+    });
+});

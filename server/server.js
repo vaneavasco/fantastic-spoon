@@ -117,6 +117,27 @@ app.get('/users/me', auth.authenticate, (req, res) => {
     res.send(req.user);
 });
 
+app.post('/users/login', (req, res) => {
+    loginData = _.pick(req.body, ['password', 'email']);
+    if (!loginData.hasOwnProperty('password') || !loginData.hasOwnProperty('email')) {
+        res.status(400).send();
+    }
+
+    User.findByCredentials(loginData.email, loginData.password).then((user) => {
+        return user.generateAuthToken().then((token) => {
+            res.header('x-auth', token).send(user);
+        });
+    }).catch(e => res.status(400).send())
+});
+
+app.delete('/users/me/token', auth.authenticate, (req, res) => {
+    req.user.removeToken(req.token).then(() => {
+        res.status(200).send();
+    }, () => {
+        res.status(400).send();
+    });
+});
+
 app.listen(port, () => {
     console.log(`Started up at port ${port}`);
 });
