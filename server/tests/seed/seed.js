@@ -2,7 +2,7 @@ const {Todo} = require('./../../models/todo');
 const {User} = require('./../../models/user');
 const {ObjectId} = require('mongodb');
 const jwt = require('jsonwebtoken');
-const secret = 'somesalt';
+const secret = process.env.JWT_SECRET;
 
 const userOneId = new ObjectId();
 const userTwoId = new ObjectId();
