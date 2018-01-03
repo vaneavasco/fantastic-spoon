@@ -14,6 +14,10 @@ const port = process.env.PORT;
 
 app.use(bodyParser.json());
 
+app.get('/', (req, res) => {
+    res.status(404).send();
+});
+
 app.post('/todos', auth.authenticate, (req, res) => {
     let todo = new Todo({
         text: req.body.text,
