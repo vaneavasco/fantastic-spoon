@@ -4,17 +4,6 @@ const {ObjectId} = require('mongodb');
 const jwt = require('jsonwebtoken');
 const secret = 'somesalt';
 
-const todosSeed = [
-    {
-        _id: new ObjectId(),
-        text: 'First test todo'
-    },
-    {
-        _id: new ObjectId(),
-        text: 'Second test todo'
-    }
-];
-
 const userOneId = new ObjectId();
 const userTwoId = new ObjectId();
 const usersSeed = [
@@ -33,8 +22,27 @@ const usersSeed = [
         _id: userTwoId,
         email: 'user2@example.com',
         password: 'userTwoPass',
+        tokens: [
+            {
+                access: 'auth',
+                token: jwt.sign({_id: userTwoId, access: 'auth'}, secret).toString()
+            }
+        ]
     },
 
+];
+
+const todosSeed = [
+    {
+        _id: new ObjectId(),
+        text: 'First test todo',
+        _creator: userOneId
+    },
+    {
+        _id: new ObjectId(),
+        text: 'Second test todo',
+        _creator: userTwoId
+    }
 ];
 
 const populateTodos = (done) => {
